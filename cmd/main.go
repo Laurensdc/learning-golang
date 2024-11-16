@@ -5,7 +5,13 @@ import (
 	"os"
 )
 
+var isDebug bool
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--debug" {
+		isDebug = true
+	}
+
 	bytes, err := os.ReadFile("../binaries/listing_0037_single_register_mov")
 
 	if err != nil {
@@ -20,10 +26,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	var byteArr [2]byte
+	copy(byteArr[:], bytes[0:2])
+	instruction := decodeInstruction(byteArr)
+
+	fmt.Println(instruction)
+
+}
+
+func decodeInstruction(bytes [2]byte) string {
+
 	var byte1 byte = bytes[0]
 	var byte2 byte = bytes[1]
 
-	fmt.Printf("the bytes %b %b\n", byte1, byte2)
+	if isDebug {
+		fmt.Printf("Reading bytes %b %b\n", byte1, byte2)
+	}
 
 	// Decode it!
 	var opcode = byte1 & 0b1111_1100
@@ -33,7 +51,9 @@ func main() {
 	var reg = byte2 & 0b0011_1000 >> 3 // name of register
 	var rm = byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
 
-	fmt.Printf("all the stuff: opcode %b d %b w %b mod %b reg %b rm %b\n", opcode, d, w, mod, reg, rm)
+	if isDebug {
+		fmt.Printf("all the stuff: opcode %b d %b w %b mod %b reg %b rm %b\n", opcode, d, w, mod, reg, rm)
+	}
 
 	decodedInstruction := ""
 
@@ -79,6 +99,9 @@ func main() {
 
 	}
 
-	fmt.Printf("Final output omg\n%v\n", decodedInstruction)
+	if isDebug {
+		fmt.Printf("Decoded output omg\n%v\n", decodedInstruction)
 
+	}
+	return decodedInstruction
 }
