@@ -34,9 +34,10 @@ func main() {
 func DecodeInstructions(bytes []byte) string {
 	decodedInstruction := ""
 
+	// Each set of 2 bytes is 1 instruction
 	for i := 0; i < len(bytes)-1; i += 2 {
-		var byte1 byte = bytes[0]
-		var byte2 byte = bytes[1]
+		var byte1 byte = bytes[i]
+		var byte2 byte = bytes[i+1]
 
 		if isDebug {
 			fmt.Printf("Reading bytes %b %b\n", byte1, byte2)
@@ -54,7 +55,7 @@ func DecodeInstructions(bytes []byte) string {
 			fmt.Printf("all the stuff: opcode %b d %b w %b mod %b reg %b rm %b\n", opcode, d, w, mod, reg, rm)
 		}
 
-		if opcode == 0b1000_10 { // mov
+		if opcode == 0b100010 { // mov
 			decodedInstruction += "mov "
 			// d is 0 so
 			// source is in reg field
