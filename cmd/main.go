@@ -59,25 +59,20 @@ func DecodeInstructions(bytes []byte) string {
 			fmt.Printf("all the stuff: opcode %b d %b w %b mod %b reg %b rm %b\n", opcode, d, w, mod, reg, rm)
 		}
 
-		if opcode == 0b100010 { // mov
-			decodedInstruction += "mov "
-
-			// when we do			mov ax, bx
-			// it means				mov dest, source
-			// aka						ax = bx
-
-			// d is 0 => source is in reg field
-			// d is 1 => dest is in reg field
-
-			orderedOperands := map[byte]string{
-				0: decodeOperands(w, rm, reg),
-				1: decodeOperands(w, reg, rm),
-			}
-
-			decodedInstruction += orderedOperands[d]
+		decodedOpcode := map[byte]string{
+			0b100010: "mov",
 		}
 
-		decodedInstruction += "\n"
+		// when we do			mov ax, bx
+		// it means				ax = bx
+		// d is 0 => source is in reg field
+		// d is 1 => dest is in reg field
+		orderedOperands := map[byte]string{
+			0: decodeOperands(w, rm, reg),
+			1: decodeOperands(w, reg, rm),
+		}
+
+		decodedInstruction += decodedOpcode[opcode] + " " + orderedOperands[d] + "\n"
 	}
 
 	if debugging {
