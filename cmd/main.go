@@ -23,8 +23,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Every thing is 16 bits, so I need to fetch them
-	// 16 bits at a time
+	// Every instruction is 16 bits
+	// error if not
 	if len(bytes)%2 != 0 {
 		fmt.Printf("Didn't provide 16 bit instructions, cannot decode\n")
 		os.Exit(1)
@@ -69,45 +69,12 @@ func DecodeInstructions(bytes []byte) string {
 			// d is 0 => source is in reg field
 			// d is 1 => dest is in reg field
 
-			var source byte
-			var dest byte
-
-			if d == 0 {
-				source = reg
-				dest = rm
-			} else if d == 1 {
-				dest = reg
-				source = rm
+			orderedOperands := map[byte]string{
+				0: decodeOperands(w, rm, reg),
+				1: decodeOperands(w, reg, rm),
 			}
 
-			registerMap := map[byte]map[byte]string{
-				0: {
-					0b000: "al",
-					0b001: "cl",
-					0b010: "dl",
-					0b011: "bl",
-					0b100: "ah",
-					0b101: "ch",
-					0b110: "dh",
-					0b111: "bh",
-				},
-				1: {
-					0b000: "ax",
-					0b001: "cx",
-					0b010: "dx",
-					0b011: "bx",
-					0b100: "sp",
-					0b101: "bp",
-					0b110: "si",
-					0b111: "di",
-				},
-			}
-
-			destRegister := registerMap[w][dest]
-			decodedInstruction += destRegister + ", "
-
-			sourceRegister := registerMap[w][source]
-			decodedInstruction += sourceRegister
+			decodedInstruction += orderedOperands[d]
 		}
 
 		decodedInstruction += "\n"
@@ -118,4 +85,31 @@ func DecodeInstructions(bytes []byte) string {
 	}
 
 	return decodedInstruction
+}
+
+func decodeOperands(w, reg1, reg2 byte) string {
+	mapRegister := map[byte]map[byte]string{
+		0: {
+			0b000: "al",
+			0b001: "cl",
+			0b010: "dl",
+			0b011: "bl",
+			0b100: "ah",
+			0b101: "ch",
+			0b110: "dh",
+			0b111: "bh",
+		},
+		1: {
+			0b000: "ax",
+			0b001: "cx",
+			0b010: "dx",
+			0b011: "bx",
+			0b100: "sp",
+			0b101: "bp",
+			0b110: "si",
+			0b111: "di",
+		},
+	}
+
+	return mapRegister[w][reg1] + ", " + mapRegister[w][reg2]
 }
