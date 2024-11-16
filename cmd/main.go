@@ -5,14 +5,18 @@ import (
 	"os"
 )
 
-var isDebug bool
+var debugging bool
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
-		isDebug = true
+		debugging = true
 	}
 
 	bytes, err := os.ReadFile("../binaries/listing_0038_many_register_mov")
+
+	if debugging {
+		fmt.Printf("Read file %v", bytes)
+	}
 
 	if err != nil {
 		fmt.Printf("Failed to read file: %v\n", err)
@@ -39,7 +43,7 @@ func DecodeInstructions(bytes []byte) string {
 		var byte1 byte = bytes[i]
 		var byte2 byte = bytes[i+1]
 
-		if isDebug {
+		if debugging {
 			fmt.Printf("Reading bytes %b %b\n", byte1, byte2)
 		}
 
@@ -51,7 +55,7 @@ func DecodeInstructions(bytes []byte) string {
 		var reg = byte2 & 0b0011_1000 >> 3 // name of register
 		var rm = byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
 
-		if isDebug {
+		if debugging {
 			fmt.Printf("all the stuff: opcode %b d %b w %b mod %b reg %b rm %b\n", opcode, d, w, mod, reg, rm)
 		}
 
@@ -100,7 +104,7 @@ func DecodeInstructions(bytes []byte) string {
 		decodedInstruction += "\n"
 	}
 
-	if isDebug {
+	if debugging {
 		fmt.Printf("Decoded output omg\n%v\n", decodedInstruction)
 
 	}
