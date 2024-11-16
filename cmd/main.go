@@ -64,7 +64,7 @@ func DecodeInstructions(bytes []byte) string {
 
 			// when we do			mov ax, bx
 			// it means				mov dest, source
-			// like						ax = bx
+			// aka						ax = bx
 
 			// d is 0 => source is in reg field
 			// d is 1 => dest is in reg field
@@ -117,7 +117,6 @@ func DecodeInstructions(bytes []byte) string {
 				sourceRegister := registerMapW0[source]
 				decodedInstruction += sourceRegister
 			}
-
 		}
 
 		decodedInstruction += "\n"
@@ -125,7 +124,7 @@ func DecodeInstructions(bytes []byte) string {
 
 	if debugging {
 		fmt.Printf("Decoded output omg\n%v\n", decodedInstruction)
-
 	}
+
 	return decodedInstruction
 }
