@@ -14,17 +14,16 @@ func main() {
 
 	bytes, err := os.ReadFile("../binaries/listing_0038_many_register_mov")
 
-	if debugging {
-		fmt.Printf("Read file %08b", bytes)
-	}
-
 	if err != nil {
 		fmt.Printf("Failed to read file: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Every instruction is 16 bits
-	// error if not
+	if debugging {
+		fmt.Printf("Read file %08b", bytes)
+	}
+
+	// An instruction is 16 bits, len(bytes) has to be modulo 2
 	if len(bytes)%2 != 0 {
 		fmt.Printf("Didn't provide 16 bit instructions, cannot decode\n")
 		os.Exit(1)
@@ -65,8 +64,6 @@ func DecodeInstructions(bytes []byte) string {
 
 		// when we do			mov ax, bx
 		// it means				ax = bx
-		// d is 0 => source is in reg field
-		// d is 1 => dest is in reg field
 		orderedOperands := map[byte]string{
 			0: decodeOperands(w, rm, reg),
 			1: decodeOperands(w, reg, rm),
