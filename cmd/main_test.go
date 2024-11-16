@@ -15,7 +15,7 @@ func TestDecodeInstruction_SingleRegister(t *testing.T) {
 }
 
 func TestDecodeInstruction_MultipleRegisters(t *testing.T) {
-	bytes := []byte{137, 217, 136, 229, 137, 218, 137, 222, 137, 251, 136, 200, 136, 237, 137, 19, 5, 137, 243, 137, 252, 137, 197}
+	bytes := []byte{137, 217, 136, 229, 137, 218, 137, 222, 137, 251, 136, 200, 136, 237, 137, 195, 137, 243, 137, 252, 137, 197}
 	output := DecodeInstructions(bytes)
 	expected :=
 		`mov cx, bx

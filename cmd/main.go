@@ -61,42 +61,61 @@ func DecodeInstructions(bytes []byte) string {
 
 		if opcode == 0b100010 { // mov
 			decodedInstruction += "mov "
-			// d is 0 so
-			// source is in reg field
 
-			// when we do mov ax, bx
-			// it means   mov dest, source
+			// when we do			mov ax, bx
+			// it means				mov dest, source
 			// like						ax = bx
 
-			// so now we know that source is in reg field
-			// so bx is in reg field
-			// that means that the dest is in the rm field
+			// d is 0 => source is in reg field
+			// d is 1 => dest is in reg field
 
-			// now I need to get dest first
+			var source byte
+			var dest byte
 
-			if d == 0 { // source is in reg field, dest is in r/m field
-				if w == 1 {
-					// Map for when W == 1
-					registerMapW1 := map[byte]string{
-						0b000: "ax",
-						0b001: "cx",
-						0b010: "dx",
-						0b011: "bx",
-						0b100: "sp",
-						0b101: "bp",
-						0b110: "si",
-						0b111: "di",
-					}
+			if d == 0 {
+				source = reg
+				dest = rm
+			} else if d == 1 {
+				dest = reg
+				source = rm
+			}
 
-					destRegister := registerMapW1[rm]
-					decodedInstruction += destRegister + ", "
+			// Map for when W == 1
+			registerMapW1 := map[byte]string{
+				0b000: "ax",
+				0b001: "cx",
+				0b010: "dx",
+				0b011: "bx",
+				0b100: "sp",
+				0b101: "bp",
+				0b110: "si",
+				0b111: "di",
+			}
 
-					sourceRegister := registerMapW1[reg]
-					decodedInstruction += sourceRegister
-				} else if w == 0 {
-					// TODO: Create map for w == 0
-				}
+			// Map for when W == 0
+			registerMapW0 := map[byte]string{
+				0b000: "al",
+				0b001: "cl",
+				0b010: "dl",
+				0b011: "bl",
+				0b100: "ah",
+				0b101: "ch",
+				0b110: "dh",
+				0b111: "bh",
+			}
 
+			if w == 1 {
+				destRegister := registerMapW1[dest]
+				decodedInstruction += destRegister + ", "
+
+				sourceRegister := registerMapW1[source]
+				decodedInstruction += sourceRegister
+			} else if w == 0 {
+				destRegister := registerMapW0[dest]
+				decodedInstruction += destRegister + ", "
+
+				sourceRegister := registerMapW0[source]
+				decodedInstruction += sourceRegister
 			}
 
 		}
