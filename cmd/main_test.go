@@ -54,7 +54,8 @@ mov ah, [bx + si + 4]
 mov al, [bx + si + 4999]
 mov [bx + di], cx
 mov [bp + si], cl
-mov [bp], ch`
+mov [bp], ch
+`
 
 	if expected != output {
 		t.Errorf("Expected\n%v\ngot\n%v\n", expected, output)

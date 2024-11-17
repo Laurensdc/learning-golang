@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var debugging bool
+var debugging bool = true
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
@@ -23,22 +23,16 @@ func main() {
 		fmt.Printf("Read file %08b", bytes)
 	}
 
-	// An instruction is 16 bits, len(bytes) has to be modulo 2
-	if len(bytes)%2 != 0 {
-		fmt.Printf("Didn't provide 16 bit instructions, cannot decode\n")
-		os.Exit(1)
-	}
-
 	instruction := DecodeInstructions(bytes)
 
 	fmt.Println(instruction)
 }
 
 func DecodeInstructions(bytes []byte) string {
+
 	decodedInstruction := ""
 
-	// Each set of 2 bytes is 1 instruction
-	for i := 0; i < len(bytes)-1; i += 2 {
+	for i := 0; i < len(bytes); {
 		var byte1 byte = bytes[i]
 		var byte2 byte = bytes[i+1]
 
@@ -46,30 +40,60 @@ func DecodeInstructions(bytes []byte) string {
 			fmt.Printf("Reading bytes %b %b\n", byte1, byte2)
 		}
 
-		var opcode = byte1 & 0b1111_1100 >> 2 // first 6 bytes is opcode
-		var d = byte1 & 0b0000_0010 >> 1      // 0: source is in reg field, 1: dest is in reg field
-		var w = byte1 & 0b0000_0001
+		if byte1&0b1111_1100>>2 == 0b100010 {
+			//register/memory to/from register
 
-		var mod = byte2 & 0b1100_0000 >> 6
-		var reg = byte2 & 0b0011_1000 >> 3 // name of register
-		var rm = byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
+			d := byte1 & 0b0000_0010 >> 1 // 0: source is in reg field, 1: dest is in reg field
+			w := byte1 & 0b0000_0001
 
-		if debugging {
-			fmt.Printf("all the stuff: opcode %b d %b w %b mod %b reg %b rm %b\n", opcode, d, w, mod, reg, rm)
+			mod := byte2 & 0b1100_0000 >> 6
+			reg := byte2 & 0b0011_1000 >> 3 // name of register
+			rm := byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
+
+			if mod == 0b00 {
+				// Everything is encoded in these 2 bytes
+
+				if rm == 0b110 {
+					// if r/m is 110, we have 16 bit displacement (exception case lol)
+					i += 4
+				} else {
+					// no displacement
+					i += 2
+				}
+			}
+			if mod == 0b11 {
+				// Everything is encoded in these 2 bytes
+
+				// when we do			mov ax, bx
+				// it means				ax = bx
+				orderedOperands := map[byte]string{
+					0: decodeOperands(w, rm, reg),
+					1: decodeOperands(w, reg, rm),
+				}
+
+				decodedInstruction += "mov " + orderedOperands[d] + "\n"
+
+				i += 2
+			}
+			if mod == 0b01 {
+				// Read 3 bytes
+				i += 3
+			}
+			if mod == 0b10 {
+				// Read 4 bytes
+				i += 4
+			}
+		} else if byte1&0b1111_0000>>4 == 0b1011 {
+			// immediate to register
+			w := byte1 & 0b0000_1000 >> 3
+
+			if w == 0 {
+				i += 2
+			} else if w == 1 {
+				i += 3
+			}
+		} else {
 		}
-
-		decodedOpcode := map[byte]string{
-			0b100010: "mov",
-		}
-
-		// when we do			mov ax, bx
-		// it means				ax = bx
-		orderedOperands := map[byte]string{
-			0: decodeOperands(w, rm, reg),
-			1: decodeOperands(w, reg, rm),
-		}
-
-		decodedInstruction += decodedOpcode[opcode] + " " + orderedOperands[d] + "\n"
 	}
 
 	if debugging {
