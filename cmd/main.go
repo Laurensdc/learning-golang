@@ -34,6 +34,10 @@ func DecodeInstructions(bytes []byte) string {
 	decodedInstruction := ""
 
 	for bytePointer := 0; bytePointer < len(bytes); {
+		if debugging {
+			fmt.Printf("Processing byte %v\n", bytePointer)
+		}
+
 		var byte1 byte = bytes[bytePointer]
 		var byte2 byte = bytes[bytePointer+1]
 
@@ -76,6 +80,19 @@ func DecodeInstructions(bytes []byte) string {
 				bytePointer += 2
 			}
 			if mod == 0b01 {
+				byte3 := bytes[bytePointer+2]
+
+				var byte3str string
+				if byte3 > 0 {
+					byte3str = " + " + fmt.Sprintf("%v", byte3)
+
+				} else {
+					byte3str = ""
+				}
+
+				// 8 bit displacement
+				decodedInstruction += "mov " + decodeRegister(w, reg) + ", [" + decodeEffectiveAddress(rm) + byte3str + "]\n"
+
 				// Read 3 bytes
 				bytePointer += 3
 			}
@@ -115,6 +132,8 @@ func DecodeInstructions(bytes []byte) string {
 				bytePointer += 3
 			}
 		} else {
+			fmt.Println("Unspecified operation")
+			os.Exit(1)
 		}
 	}
 
