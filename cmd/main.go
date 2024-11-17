@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 )
@@ -36,10 +37,6 @@ func DecodeInstructions(bytes []byte) string {
 		var byte1 byte = bytes[i]
 		var byte2 byte = bytes[i+1]
 
-		if debugging {
-			fmt.Printf("Reading bytes %b %b\n", byte1, byte2)
-		}
-
 		if byte1&0b1111_1100>>2 == 0b100010 {
 			//register/memory to/from register
 
@@ -67,8 +64,8 @@ func DecodeInstructions(bytes []byte) string {
 				// when we do			mov ax, bx
 				// it means				ax = bx
 				orderedOperands := map[byte]string{
-					0: decodeOperands(w, rm, reg),
-					1: decodeOperands(w, reg, rm),
+					0: decodeRegister(w, rm) + ", " + decodeRegister(w, reg),
+					1: decodeRegister(w, reg) + ", " + decodeRegister(w, rm),
 				}
 
 				decodedInstruction += "mov " + orderedOperands[d] + "\n"
@@ -86,10 +83,28 @@ func DecodeInstructions(bytes []byte) string {
 		} else if byte1&0b1111_0000>>4 == 0b1011 {
 			// immediate to register
 			w := byte1 & 0b0000_1000 >> 3
+			reg := byte1 & 0b0000_0111
 
 			if w == 0 {
+				dataValue := fmt.Sprintf("%v", int8(byte2))
+
+				if debugging {
+					fmt.Printf("byte 2 %b\nbyte2 int is %v\n", byte2, dataValue)
+				}
+				decodedInstruction += "mov " + decodeRegister(w, reg) + ", " + dataValue + "\n"
+
 				i += 2
 			} else if w == 1 {
+				// FIXME: This shit is broken dawg
+				byte3 := bytes[i+2]
+
+				dataValue := int16(binary.BigEndian.Uint16([]byte{byte2, byte3}))
+
+				dataValueStr := fmt.Sprintf("%v", dataValue)
+				fmt.Printf("byte3 %v\n", dataValue)
+
+				decodedInstruction += "mov " + decodeRegister(w, reg) + ", " + dataValueStr + "\n"
+
 				i += 3
 			}
 		} else {
@@ -103,7 +118,7 @@ func DecodeInstructions(bytes []byte) string {
 	return decodedInstruction
 }
 
-func decodeOperands(w, reg1, reg2 byte) string {
+func decodeRegister(w, reg byte) string {
 	mapRegister := map[byte]map[byte]string{
 		0: {
 			0b000: "al",
@@ -127,5 +142,5 @@ func decodeOperands(w, reg1, reg2 byte) string {
 		},
 	}
 
-	return mapRegister[w][reg1] + ", " + mapRegister[w][reg2]
+	return mapRegister[w][reg]
 }
