@@ -95,10 +95,15 @@ func DecodeInstructions(bytes []byte) string {
 
 				i += 2
 			} else if w == 1 {
-				// FIXME: This shit is broken dawg
 				byte3 := bytes[i+2]
 
-				dataValue := int16(binary.BigEndian.Uint16([]byte{byte2, byte3}))
+				if debugging {
+					fmt.Printf("Debugging i=%v\n", i)
+					fmt.Printf("the bytes for w=1: %b %b\n", byte2, byte3)
+					fmt.Printf("reg %v\n", reg)
+				}
+
+				dataValue := int16(binary.LittleEndian.Uint16([]byte{byte2, byte3}))
 
 				dataValueStr := fmt.Sprintf("%v", dataValue)
 				fmt.Printf("byte3 %v\n", dataValue)
