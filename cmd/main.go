@@ -84,6 +84,7 @@ func DecodeInstructions(bytes []byte) string {
 
 				var byte3str string
 				if byte3 > 0 {
+					// We won't render "+ 0" in the output
 					byte3str = " + " + fmt.Sprintf("%v", byte3)
 
 				} else {
@@ -97,6 +98,21 @@ func DecodeInstructions(bytes []byte) string {
 				bytePointer += 3
 			}
 			if mod == 0b10 {
+				// 16 bit displacement
+				byte3 := bytes[bytePointer+2]
+				byte4 := bytes[bytePointer+3]
+
+				byteStr := bytesToStr([2]byte{byte3, byte4})
+				var finalStr string
+
+				if byteStr == "" {
+					finalStr = ""
+				} else {
+					finalStr = " + " + byteStr
+				}
+
+				decodedInstruction += "mov " + decodeRegister(w, reg) + ", [" + decodeEffectiveAddress(rm) + finalStr + "]\n"
+
 				// Read 4 bytes
 				bytePointer += 4
 			}
@@ -120,11 +136,7 @@ func DecodeInstructions(bytes []byte) string {
 				// "w" for wide, read 2 bytes as immediate value
 				byte3 := bytes[bytePointer+2]
 
-				// Put the bytes in the right order and then cast to signed int16
-				dataValue := int16(binary.LittleEndian.Uint16([]byte{byte2, byte3}))
-
-				dataValueStr := fmt.Sprintf("%v", dataValue)
-				fmt.Printf("byte3 %v\n", dataValue)
+				dataValueStr := bytesToStr([2]byte{byte2, byte3})
 
 				decodedInstruction += "mov " + decodeRegister(w, reg) + ", " + dataValueStr + "\n"
 
@@ -142,6 +154,14 @@ func DecodeInstructions(bytes []byte) string {
 	}
 
 	return decodedInstruction
+}
+
+func bytesToStr(bytes [2]byte) string {
+	// Put the bytes in the right order and then cast to signed int16
+	dataValue := int16(binary.LittleEndian.Uint16(bytes[:]))
+
+	dataValueStr := fmt.Sprintf("%v", dataValue)
+	return dataValueStr
 }
 
 func decodeEffectiveAddress(rm byte) string {
