@@ -124,12 +124,11 @@ func registerMode(d, w, reg, rm byte) string {
 	return "mov " + operands + "\n"
 }
 
-// mov instruction in memory mode with 16 bit displacement
-func memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4 byte) string {
-	displacement := bytesToStr([2]byte{byte3, byte4})
+// mov instruction in memory mode with no displacement
+func memoryModeNoDisplacement(d, w, reg, rm byte) string {
 	regStr := decodeRegister(w, reg)
-	effectiveAddress := decodeEffectiveAddress(rm, displacement)
-	operands, err := orderOperands(d, regStr, effectiveAddress)
+	memoryAddress := decodeEffectiveAddress(rm, "")
+	operands, err := orderOperands(d, regStr, memoryAddress)
 
 	if err != nil {
 		fmt.Println(err)
@@ -154,11 +153,12 @@ func memoryMode8BitDisplacement(d, w, reg, rm, byte3 byte) string {
 	return "mov " + operands + "\n"
 }
 
-// mov instruction in memory mode with no displacement
-func memoryModeNoDisplacement(d, w, reg, rm byte) string {
+// mov instruction in memory mode with 16 bit displacement
+func memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4 byte) string {
+	displacement := bytesToStr([2]byte{byte3, byte4})
 	regStr := decodeRegister(w, reg)
-	memoryAddress := decodeEffectiveAddress(rm, "")
-	operands, err := orderOperands(d, regStr, memoryAddress)
+	effectiveAddress := decodeEffectiveAddress(rm, displacement)
+	operands, err := orderOperands(d, regStr, effectiveAddress)
 
 	if err != nil {
 		fmt.Println(err)
@@ -168,47 +168,12 @@ func memoryModeNoDisplacement(d, w, reg, rm byte) string {
 	return "mov " + operands + "\n"
 }
 
-// Order both operands based on the value of d
-func orderOperands(d byte, reg, regOrMemoryAddress string) (string, error) {
-	if d == 0 {
-		// 0: source is in reg field
-		return regOrMemoryAddress + ", " + reg, nil
-	} else if d == 1 {
-		// 1: destination is in reg field
-		return reg + ", " + regOrMemoryAddress, nil
-	} else {
-		return "", fmt.Errorf("Received invalid value %v for d\n", d)
-	}
-}
-
 // Put the bytes in the right order and interpret as unsigned int
 func bytesToStr(bytes [2]byte) string {
 	dataValue := int16(binary.LittleEndian.Uint16(bytes[:]))
 
 	dataValueStr := fmt.Sprintf("%v", dataValue)
 	return dataValueStr
-}
-
-func decodeEffectiveAddress(rm byte, displacement string) string {
-	mapEffectiveAddress := map[byte]string{
-		0b000: "bx + si",
-		0b001: "bx + di",
-		0b010: "bp + si",
-		0b011: "bp + di",
-		0b100: "si",
-		0b101: "di",
-		0b110: "bp",
-		0b111: "bx",
-	}
-
-	var displacementStr string
-	if displacement == "" || displacement == "0" {
-		displacementStr = ""
-	} else {
-		displacementStr = " + " + displacement
-	}
-
-	return "[" + mapEffectiveAddress[rm] + displacementStr + "]"
 }
 
 func decodeRegister(w, reg byte) string {
@@ -236,4 +201,39 @@ func decodeRegister(w, reg byte) string {
 	}
 
 	return mapRegister[w][reg]
+}
+
+func decodeEffectiveAddress(rm byte, displacement string) string {
+	mapEffectiveAddress := map[byte]string{
+		0b000: "bx + si",
+		0b001: "bx + di",
+		0b010: "bp + si",
+		0b011: "bp + di",
+		0b100: "si",
+		0b101: "di",
+		0b110: "bp",
+		0b111: "bx",
+	}
+
+	var displacementStr string
+	if displacement == "" || displacement == "0" {
+		displacementStr = ""
+	} else {
+		displacementStr = " + " + displacement
+	}
+
+	return "[" + mapEffectiveAddress[rm] + displacementStr + "]"
+}
+
+// Order both operands based on the value of d
+func orderOperands(d byte, reg, regOrMemoryAddress string) (string, error) {
+	if d == 0 {
+		// 0: source is in reg field
+		return regOrMemoryAddress + ", " + reg, nil
+	} else if d == 1 {
+		// 1: destination is in reg field
+		return reg + ", " + regOrMemoryAddress, nil
+	} else {
+		return "", fmt.Errorf("Received invalid value %v for d\n", d)
+	}
 }
