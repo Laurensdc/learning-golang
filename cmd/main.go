@@ -48,10 +48,17 @@ func DecodeInstructions(bytes []byte) string {
 			w := byte1 & 0b0000_0001
 
 			mod := byte2 & 0b1100_0000 >> 6
+			const (
+				MemoryModeNoDisplacement    = iota // mod == 0b00
+				MemoryMode8BitDisplacement         // mod == 0b01
+				MemoryMode16BitDisplacement        // mod == 0b10
+				RegisterMode                       // mod == 0b11
+			)
+
 			reg := byte2 & 0b0011_1000 >> 3 // name of register
 			rm := byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
 
-			if mod == 0b00 {
+			if mod == MemoryModeNoDisplacement {
 				if rm == 0b110 {
 					// if r/m is 110, we have 16 bit displacement (exception case lol)
 					// FIXME: Unhandled instruction
@@ -60,16 +67,16 @@ func DecodeInstructions(bytes []byte) string {
 					decodedInstruction += memoryModeNoDisplacement(d, w, reg, rm)
 					bytePointer += 2
 				}
-			} else if mod == 0b01 {
+			} else if mod == MemoryMode8BitDisplacement {
 				byte3 := bytes[bytePointer+2]
 				decodedInstruction += memoryMode8BitDisplacement(d, w, reg, rm, byte3)
 				bytePointer += 3
-			} else if mod == 0b10 {
+			} else if mod == MemoryMode16BitDisplacement {
 				byte3 := bytes[bytePointer+2]
 				byte4 := bytes[bytePointer+3]
 				decodedInstruction += memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4)
 				bytePointer += 4
-			} else if mod == 0b11 {
+			} else if mod == RegisterMode {
 				decodedInstruction += registerMode(d, w, reg, rm)
 				bytePointer += 2
 			}
