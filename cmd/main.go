@@ -122,8 +122,8 @@ func registerMode(d, w, reg, rm byte) string {
 // mov instruction in memory mode with no displacement
 func memoryModeNoDisplacement(d, w, reg, rm byte) string {
 	regStr := decodeRegister(w, reg)
-	memoryAddress := decodeEffectiveAddress(rm, "")
-	operands := orderOperands(d, regStr, memoryAddress)
+	effectiveAddress := decodeEffectiveAddress(rm, "")
+	operands := orderOperands(d, regStr, effectiveAddress)
 
 	return "mov " + operands + "\n"
 }
