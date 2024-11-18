@@ -114,12 +114,7 @@ func DecodeInstructions(bytes []byte) string {
 func registerMode(d, w, reg, rm byte) string {
 	regStr := decodeRegister(w, reg)
 	rmStr := decodeRegister(w, rm)
-	operands, err := orderOperands(d, regStr, rmStr)
-
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	operands := orderOperands(d, regStr, rmStr)
 
 	return "mov " + operands + "\n"
 }
@@ -128,12 +123,7 @@ func registerMode(d, w, reg, rm byte) string {
 func memoryModeNoDisplacement(d, w, reg, rm byte) string {
 	regStr := decodeRegister(w, reg)
 	memoryAddress := decodeEffectiveAddress(rm, "")
-	operands, err := orderOperands(d, regStr, memoryAddress)
-
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	operands := orderOperands(d, regStr, memoryAddress)
 
 	return "mov " + operands + "\n"
 }
@@ -143,12 +133,7 @@ func memoryMode8BitDisplacement(d, w, reg, rm, byte3 byte) string {
 	displacement := fmt.Sprintf("%v", byte3)
 	regStr := decodeRegister(w, reg)
 	effectiveAddress := decodeEffectiveAddress(rm, displacement)
-	operands, err := orderOperands(d, regStr, effectiveAddress)
-
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	operands := orderOperands(d, regStr, effectiveAddress)
 
 	return "mov " + operands + "\n"
 }
@@ -158,12 +143,7 @@ func memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4 byte) string {
 	displacement := bytesToStr([2]byte{byte3, byte4})
 	regStr := decodeRegister(w, reg)
 	effectiveAddress := decodeEffectiveAddress(rm, displacement)
-	operands, err := orderOperands(d, regStr, effectiveAddress)
-
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	operands := orderOperands(d, regStr, effectiveAddress)
 
 	return "mov " + operands + "\n"
 }
@@ -226,14 +206,16 @@ func decodeEffectiveAddress(rm byte, displacement string) string {
 }
 
 // Order both operands based on the value of d
-func orderOperands(d byte, reg, regOrMemoryAddress string) (string, error) {
+func orderOperands(d byte, reg, regOrMemoryAddress string) string {
 	if d == 0 {
 		// 0: source is in reg field
-		return regOrMemoryAddress + ", " + reg, nil
+		return regOrMemoryAddress + ", " + reg
 	} else if d == 1 {
 		// 1: destination is in reg field
-		return reg + ", " + regOrMemoryAddress, nil
+		return reg + ", " + regOrMemoryAddress
 	} else {
-		return "", fmt.Errorf("Received invalid value %v for d\n", d)
+		fmt.Printf("Received invalid value %v for d\n", d)
+		os.Exit(1)
+		return ""
 	}
 }
