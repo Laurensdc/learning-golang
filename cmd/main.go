@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var debugging bool = true
+var debugging bool = false
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
@@ -42,7 +42,7 @@ func DecodeInstructions(bytes []byte) string {
 		var byte2 byte = bytes[bytePointer+1]
 
 		if byte1&0b1111_1100>>2 == 0b100010 {
-			//register/memory to/from register
+			// Register/memory to/from register
 
 			d := byte1 & 0b0000_0010 >> 1 // 0: source is in reg field, 1: dest is in reg field
 			w := byte1 & 0b0000_0001
@@ -52,69 +52,83 @@ func DecodeInstructions(bytes []byte) string {
 			rm := byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
 
 			if mod == 0b00 {
-				// Everything is encoded in these 2 bytes
+				// Memory mode, no displacement
 
 				if rm == 0b110 {
 					// if r/m is 110, we have 16 bit displacement (exception case lol)
+					// TODO: Unhandled instruction
 					bytePointer += 4
 				} else {
 					// no displacement
 
-					decodedInstruction += "mov " + decodeRegister(w, reg) + ", [" + decodeEffectiveAddress(rm) + "]\n"
+					regStr := decodeRegister(w, reg)
+					memoryAddress := decodeEffectiveAddress(rm, "")
+					operands, err := orderOperands(d, regStr, memoryAddress)
+
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
+					decodedInstruction += "mov " + operands + "\n"
 
 					bytePointer += 2
 				}
-			}
-			if mod == 0b11 {
-				// Everything is encoded in these 2 bytes
-
-				// when we do			mov ax, bx
-				// it means				ax = bx
-				orderedOperands := map[byte]string{
-					0: decodeRegister(w, rm) + ", " + decodeRegister(w, reg),
-					1: decodeRegister(w, reg) + ", " + decodeRegister(w, rm),
-				}
-
-				decodedInstruction += "mov " + orderedOperands[d] + "\n"
-
-				bytePointer += 2
-			}
-			if mod == 0b01 {
+			} else if mod == 0b01 {
+				// Memory mode, 8 bit displacement
 				byte3 := bytes[bytePointer+2]
 
-				var byte3str string
-				if byte3 > 0 {
-					// We won't render "+ 0" in the output
-					byte3str = " + " + fmt.Sprintf("%v", byte3)
+				memoryAddress := fmt.Sprintf("%v", byte3)
 
-				} else {
-					byte3str = ""
+				regStr := decodeRegister(w, reg)
+				memoryAddress2 := decodeEffectiveAddress(rm, memoryAddress)
+				operands, err := orderOperands(d, regStr, memoryAddress2)
+
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
 				}
 
 				// 8 bit displacement
-				decodedInstruction += "mov " + decodeRegister(w, reg) + ", [" + decodeEffectiveAddress(rm) + byte3str + "]\n"
+				decodedInstruction += "mov " + operands + "\n"
 
 				// Read 3 bytes
 				bytePointer += 3
-			}
-			if mod == 0b10 {
-				// 16 bit displacement
+			} else if mod == 0b10 {
+				// Memory mode, 8 bit displacement
 				byte3 := bytes[bytePointer+2]
 				byte4 := bytes[bytePointer+3]
 
-				byteStr := bytesToStr([2]byte{byte3, byte4})
-				var finalStr string
+				memoryAddress := bytesToStr([2]byte{byte3, byte4})
 
-				if byteStr == "" {
-					finalStr = ""
-				} else {
-					finalStr = " + " + byteStr
+				regStr := decodeRegister(w, reg)
+				memoryAddress2 := decodeEffectiveAddress(rm, memoryAddress)
+				operands, err := orderOperands(d, regStr, memoryAddress2)
+
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
 				}
 
-				decodedInstruction += "mov " + decodeRegister(w, reg) + ", [" + decodeEffectiveAddress(rm) + finalStr + "]\n"
+				decodedInstruction += "mov " + operands + "\n"
 
 				// Read 4 bytes
 				bytePointer += 4
+			} else if mod == 0b11 {
+				// Register mode, no displacement
+
+				regStr := decodeRegister(w, reg)
+				rmStr := decodeRegister(w, rm)
+				operands, err := orderOperands(d, regStr, rmStr)
+
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+
+				decodedInstruction += "mov " + operands + "\n"
+
+				bytePointer += 2
 			}
 		} else if byte1&0b1111_0000>>4 == 0b1011 {
 			// immediate to register
@@ -156,6 +170,20 @@ func DecodeInstructions(bytes []byte) string {
 	return decodedInstruction
 }
 
+func orderOperands(d byte, reg, regOrMemoryAddress string) (string, error) {
+	// 0: source is in reg field, 1: dest is in reg field
+	// mov ax, bx
+	// ax = bx
+
+	if d == 0 {
+		return regOrMemoryAddress + ", " + reg, nil
+	} else if d == 1 {
+		return reg + ", " + regOrMemoryAddress, nil
+	} else {
+		return "", fmt.Errorf("Received invalid value %v for d\n", d)
+	}
+}
+
 func bytesToStr(bytes [2]byte) string {
 	// Put the bytes in the right order and then cast to signed int16
 	dataValue := int16(binary.LittleEndian.Uint16(bytes[:]))
@@ -164,7 +192,7 @@ func bytesToStr(bytes [2]byte) string {
 	return dataValueStr
 }
 
-func decodeEffectiveAddress(rm byte) string {
+func decodeEffectiveAddress(rm byte, displacement string) string {
 	mapEffectiveAddress := map[byte]string{
 		0b000: "bx + si",
 		0b001: "bx + di",
@@ -176,7 +204,14 @@ func decodeEffectiveAddress(rm byte) string {
 		0b111: "bx",
 	}
 
-	return mapEffectiveAddress[rm]
+	var displacementStr string
+	if displacement == "" || displacement == "0" {
+		displacementStr = ""
+	} else {
+		displacementStr = " + " + displacement
+	}
+
+	return "[" + mapEffectiveAddress[rm] + displacementStr + "]"
 }
 
 func decodeRegister(w, reg byte) string {
