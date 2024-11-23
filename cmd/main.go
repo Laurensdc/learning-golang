@@ -42,7 +42,6 @@ func DecodeInstructions(bytes []byte) string {
 		var byte2 byte = bytes[bytePointer+1]
 
 		if byte1&0b1111_1100>>2 == 0b100010 {
-			// Register/memory to/from register
 
 			d := byte1 & 0b0000_0010 >> 1 // 0: source is in reg field, 1: dest is in reg field
 			w := byte1 & 0b0000_0001
@@ -64,39 +63,31 @@ func DecodeInstructions(bytes []byte) string {
 					// FIXME: Unhandled instruction
 					bytePointer += 4
 				} else {
-					decodedInstruction += memoryModeNoDisplacement(d, w, reg, rm)
-					bytePointer += 2
+					instr, i := memoryModeNoDisplacement(d, w, reg, rm)
+					decodedInstruction += instr
+					bytePointer += i
 				}
 			} else if mod == MemoryMode8BitDisplacement {
 				byte3 := bytes[bytePointer+2]
-				decodedInstruction += memoryMode8BitDisplacement(d, w, reg, rm, byte3)
-				bytePointer += 3
+				instr, i := memoryMode8BitDisplacement(d, w, reg, rm, byte3)
+				decodedInstruction += instr
+				bytePointer += i
 			} else if mod == MemoryMode16BitDisplacement {
 				byte3 := bytes[bytePointer+2]
 				byte4 := bytes[bytePointer+3]
-				decodedInstruction += memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4)
-				bytePointer += 4
+				instr, i := memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4)
+				decodedInstruction += instr
+				bytePointer += i
 			} else if mod == RegisterMode {
-				decodedInstruction += registerMode(d, w, reg, rm)
-				bytePointer += 2
+				instr, i := registerMode(d, w, reg, rm)
+				decodedInstruction += instr
+				bytePointer += i
 			}
 		} else if byte1&0b1111_0000>>4 == 0b1011 {
-			// immediate to register
-			w := byte1 & 0b0000_1000 >> 3
-			reg := byte1 & 0b0000_0111
-
-			if w == 0 {
-				// not wide, read 1 byte (signed) as immediate value
-				dataValueStr := fmt.Sprintf("%v", int8(byte2))
-				decodedInstruction += "mov " + decodeRegister(w, reg) + ", " + dataValueStr + "\n"
-				bytePointer += 2
-			} else if w == 1 {
-				// "w" for wide, read 2 bytes as immediate value
-				byte3 := bytes[bytePointer+2]
-				dataValueStr := bytesToStr([2]byte{byte2, byte3})
-				decodedInstruction += "mov " + decodeRegister(w, reg) + ", " + dataValueStr + "\n"
-				bytePointer += 3
-			}
+			byte3 := bytes[bytePointer+2]
+			instruction, increasePointerBy := decodeMovImmediate(byte1, byte2, byte3)
+			bytePointer += increasePointerBy
+			decodedInstruction += instruction
 		} else {
 			fmt.Println("Unspecified operation")
 			os.Exit(1)
@@ -111,41 +102,41 @@ func DecodeInstructions(bytes []byte) string {
 }
 
 // mov instruction in register mode
-func registerMode(d, w, reg, rm byte) string {
+func registerMode(d, w, reg, rm byte) (instruction string, increasePointerBy int) {
 	regStr := decodeRegister(w, reg)
 	rmStr := decodeRegister(w, rm)
 	operands := orderOperands(d, regStr, rmStr)
 
-	return "mov " + operands + "\n"
+	return "mov " + operands + "\n", 2
 }
 
 // mov instruction in memory mode with no displacement
-func memoryModeNoDisplacement(d, w, reg, rm byte) string {
+func memoryModeNoDisplacement(d, w, reg, rm byte) (instruction string, increasePointerBy int) {
 	regStr := decodeRegister(w, reg)
-	effectiveAddress := decodeEffectiveAddress(rm, "")
-	operands := orderOperands(d, regStr, effectiveAddress)
+	memoryAddress := decodeEffectiveAddress(rm, "")
+	operands := orderOperands(d, regStr, memoryAddress)
 
-	return "mov " + operands + "\n"
+	return "mov " + operands + "\n", 2
 }
 
 // mov instruction in memory mode with 8 bit displacement
-func memoryMode8BitDisplacement(d, w, reg, rm, byte3 byte) string {
+func memoryMode8BitDisplacement(d, w, reg, rm, byte3 byte) (instruction string, increasePointerBy int) {
 	displacement := fmt.Sprintf("%v", byte3)
 	regStr := decodeRegister(w, reg)
 	effectiveAddress := decodeEffectiveAddress(rm, displacement)
 	operands := orderOperands(d, regStr, effectiveAddress)
 
-	return "mov " + operands + "\n"
+	return "mov " + operands + "\n", 3
 }
 
 // mov instruction in memory mode with 16 bit displacement
-func memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4 byte) string {
+func memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4 byte) (instruction string, increasePointerBy int) {
 	displacement := bytesToStr([2]byte{byte3, byte4})
 	regStr := decodeRegister(w, reg)
 	effectiveAddress := decodeEffectiveAddress(rm, displacement)
 	operands := orderOperands(d, regStr, effectiveAddress)
 
-	return "mov " + operands + "\n"
+	return "mov " + operands + "\n", 4
 }
 
 // Put the bytes in the right order and interpret as unsigned int
@@ -154,6 +145,31 @@ func bytesToStr(bytes [2]byte) string {
 
 	dataValueStr := fmt.Sprintf("%v", dataValue)
 	return dataValueStr
+}
+
+// Decode mov operation: Register/memory to/from register
+func decodeMovRegMemToFromReg() {
+
+}
+
+// move immediate to register
+func decodeMovImmediate(byte1, byte2, byte3 byte) (decodedInstruction string, increasePointerBy int) {
+	w := byte1 & 0b0000_1000 >> 3
+	reg := byte1 & 0b0000_0111
+
+	if w == 0 {
+		// not wide, read 1 byte (signed) as immediate value
+		dataValueStr := fmt.Sprintf("%v", int8(byte2))
+		return "mov " + decodeRegister(w, reg) + ", " + dataValueStr + "\n", 2
+	} else if w == 1 {
+		// "w" for wide, read 2 bytes as immediate value
+		dataValueStr := bytesToStr([2]byte{byte2, byte3})
+		return "mov " + decodeRegister(w, reg) + ", " + dataValueStr + "\n", 3
+	} else {
+		fmt.Printf("Received invalid value %v for w\n", w)
+		os.Exit(1)
+		return "", 0
+	}
 }
 
 func decodeRegister(w, reg byte) string {
