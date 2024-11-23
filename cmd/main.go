@@ -41,50 +41,20 @@ func DecodeInstructions(bytes []byte) string {
 		var byte1 byte = bytes[bytePointer]
 		var byte2 byte = bytes[bytePointer+1]
 
+		var byte3 byte
+		if bytePointer+2 < len(bytes) {
+			byte3 = bytes[bytePointer+2]
+		}
+		var byte4 byte
+		if bytePointer+3 < len(bytes) {
+			byte4 = bytes[bytePointer+3]
+		}
+
 		if byte1&0b1111_1100>>2 == 0b100010 {
-
-			d := byte1 & 0b0000_0010 >> 1 // 0: source is in reg field, 1: dest is in reg field
-			w := byte1 & 0b0000_0001
-
-			mod := byte2 & 0b1100_0000 >> 6
-			const (
-				MemoryModeNoDisplacement    = iota // mod == 0b00
-				MemoryMode8BitDisplacement         // mod == 0b01
-				MemoryMode16BitDisplacement        // mod == 0b10
-				RegisterMode                       // mod == 0b11
-			)
-
-			reg := byte2 & 0b0011_1000 >> 3 // name of register
-			rm := byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
-
-			if mod == MemoryModeNoDisplacement {
-				if rm == 0b110 {
-					// if r/m is 110, we have 16 bit displacement (exception case lol)
-					// FIXME: Unhandled instruction
-					bytePointer += 4
-				} else {
-					instr, i := memoryModeNoDisplacement(d, w, reg, rm)
-					decodedInstruction += instr
-					bytePointer += i
-				}
-			} else if mod == MemoryMode8BitDisplacement {
-				byte3 := bytes[bytePointer+2]
-				instr, i := memoryMode8BitDisplacement(d, w, reg, rm, byte3)
-				decodedInstruction += instr
-				bytePointer += i
-			} else if mod == MemoryMode16BitDisplacement {
-				byte3 := bytes[bytePointer+2]
-				byte4 := bytes[bytePointer+3]
-				instr, i := memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4)
-				decodedInstruction += instr
-				bytePointer += i
-			} else if mod == RegisterMode {
-				instr, i := registerMode(d, w, reg, rm)
-				decodedInstruction += instr
-				bytePointer += i
-			}
+			instr, i := decodeMovRegMemToFromReg(byte1, byte2, byte3, byte4)
+			decodedInstruction += instr
+			bytePointer += i
 		} else if byte1&0b1111_0000>>4 == 0b1011 {
-			byte3 := bytes[bytePointer+2]
 			instruction, increasePointerBy := decodeMovImmediate(byte1, byte2, byte3)
 			bytePointer += increasePointerBy
 			decodedInstruction += instruction
@@ -148,7 +118,40 @@ func bytesToStr(bytes [2]byte) string {
 }
 
 // Decode mov operation: Register/memory to/from register
-func decodeMovRegMemToFromReg() {
+func decodeMovRegMemToFromReg(byte1, byte2, byte3, byte4 byte) (instruction string, increasePointerBy int) {
+	d := byte1 & 0b0000_0010 >> 1 // 0: source is in reg field, 1: dest is in reg field
+	w := byte1 & 0b0000_0001
+
+	mod := byte2 & 0b1100_0000 >> 6
+	const (
+		MemoryModeNoDisplacement    = iota // mod == 0b00
+		MemoryMode8BitDisplacement         // mod == 0b01
+		MemoryMode16BitDisplacement        // mod == 0b10
+		RegisterMode                       // mod == 0b11
+	)
+
+	reg := byte2 & 0b0011_1000 >> 3 // name of register
+	rm := byte2 & 0b0000_0111       // also name of register, or maybe name of memory Register/Memory R/M
+
+	if mod == MemoryModeNoDisplacement {
+		if rm == 0b110 {
+			// if r/m is 110, we have 16 bit displacement (exception case lol)
+			// FIXME: Unhandled instruction
+			return "", 4
+		} else {
+			return memoryModeNoDisplacement(d, w, reg, rm)
+		}
+	} else if mod == MemoryMode8BitDisplacement {
+		return memoryMode8BitDisplacement(d, w, reg, rm, byte3)
+	} else if mod == MemoryMode16BitDisplacement {
+		return memoryMode16BitDisplacement(d, w, reg, rm, byte3, byte4)
+	} else if mod == RegisterMode {
+		return registerMode(d, w, reg, rm)
+	} else {
+		fmt.Println("Unspecified operation")
+		os.Exit(1)
+		return "", 0
+	}
 
 }
 
