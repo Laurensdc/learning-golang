@@ -30,7 +30,6 @@ func main() {
 }
 
 func DecodeInstructions(bytes []byte) string {
-
 	decodedInstruction := ""
 
 	for bytePointer := 0; bytePointer < len(bytes); {
@@ -38,14 +37,13 @@ func DecodeInstructions(bytes []byte) string {
 			fmt.Printf("Processing byte %v\n", bytePointer)
 		}
 
-		var byte1 byte = bytes[bytePointer]
-		var byte2 byte = bytes[bytePointer+1]
+		var byte1, byte2 = bytes[bytePointer], bytes[bytePointer+1]
 
-		var byte3 byte
+		// Only read byte3, 4 if we can
+		var byte3, byte4 byte
 		if bytePointer+2 < len(bytes) {
 			byte3 = bytes[bytePointer+2]
 		}
-		var byte4 byte
 		if bytePointer+3 < len(bytes) {
 			byte4 = bytes[bytePointer+3]
 		}
@@ -55,9 +53,10 @@ func DecodeInstructions(bytes []byte) string {
 			decodedInstruction += instr
 			bytePointer += i
 		} else if byte1&0b1111_0000>>4 == 0b1011 {
-			instruction, increasePointerBy := decodeMovImmediate(byte1, byte2, byte3)
-			bytePointer += increasePointerBy
-			decodedInstruction += instruction
+			instr, i := decodeMovImmediate(byte1, byte2, byte3)
+
+			decodedInstruction += instr
+			bytePointer += i
 		} else {
 			fmt.Println("Unspecified operation")
 			os.Exit(1)
