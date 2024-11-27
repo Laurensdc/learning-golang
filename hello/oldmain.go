@@ -46,11 +46,11 @@ func byteStuff() {
 	var only1bit uint8 = firstByte & otherMask
 	fmt.Printf("%08b \n", only1bit)
 
-	aMap := map[byte]string{
-		0: "AL",
-		1: "CL",
-		2: "DL",
-	}
+	// aMap := map[byte]string{
+	// 	0: "AL",
+	// 	1: "CL",
+	// 	2: "DL",
+	// }
 }
 
 func otherArrStuff() {

@@ -32,7 +32,6 @@ func ReadFromStdInAndCalcAverage() {
 	}
 
 	if n == 0 {
-		fmt.Println(os.Stderr, "no values")
 		os.Exit(-1)
 
 	}
